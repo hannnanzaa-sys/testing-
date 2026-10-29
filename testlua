@@ -1,0 +1,1183 @@
+
+-- bahasa: Lua 5.1, target: Roblox (PC), eksekutor: JJSploit
+-- HANX HUB - Build Anti-FC Terbaik (Dukungan Pumpkin)
+
+jika game:IsLoaded() belum selesai maka ulangi wait() sampai game:IsLoaded() selesai
+
+
+CoreGui lokal = game:GetService("CoreGui")
+Layanan Input Pengguna lokal = game:GetService("Layanan Input Pengguna")
+Layanan Tween lokal = game:GetService("Layanan Tween")
+Pemain lokal = game:GetService("Pemain")
+RunService lokal = permainan:GetService("RunService")
+VirtualInputManager lokal = game:GetService("VirtualInputManager")
+GuiService lokal = game:GetService("GuiService")
+Pencahayaan lokal = game:GetService("Pencahayaan")
+LP lokal = Pemain.PemainLokal
+local playerGui = LP:WaitForChild("PlayerGui")
+
+-- ============================================================
+-- 0. KONFIGURASI ANTI-LAG
+-- ============================================================
+Kinerja lokal = {
+ESP_Refresh = 1,
+Penyegaran_Tangkis = 0,1,
+Penyegaran_Keterampilan = 0,05
+}
+
+-- ============================================================
+-- 1. TELEPORTASI & IKUTI
+-- ============================================================
+Pemain terpilih lokal = nil
+lokal isMengikuti = salah
+local followThread = nil
+
+fungsi lokal TeleportToPlayer(targetName)
+Karakter lokal myChar = LP.Character
+jika bukan myChar maka kembalikan akhir
+lokal myRoot = myChar:FindFirstChild("HumanoidRootPart")
+jika bukan myRoot maka kembalikan akhir
+targetPlayer lokal = Players:FindFirstChild(targetName)
+jika targetPlayer dan targetPlayer.Character maka
+local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+jika targetRoot maka
+myRoot.CFrame = targetRoot.CFrame + Vector3.new(0, 3, 0)
+akhir
+akhir
+akhir
+
+fungsi lokal GetPlayerNames()
+nama lokal = {}
+
+untuk _, plr dalam ipairs(Players:GetPlayers()) lakukan
+Jika plr ~= LP maka masukkan nama ke dalam tabel.
+akhir
+nama pengembalian
+akhir
+
+-- ============================================================
+-- 2. TANGKIS OTOMATIS (MIMIW)
+-- ============================================================
+local MimiwParry = {Enabled = false, Range = 9, Delay = 0.1, Cooldown = 1.0, Key = Enum.KeyCode.F, Count = 0, LastParry = 0, KeyIndex = 1}
+KUNCI lokal = {{"F", Enum.KeyCode.F}, {"Q", Enum.KeyCode.Q}, {"E", Enum.KeyCode.E}, {"R", Enum.KeyCode.R}}
+local seenTracks = setmetatable({}, {__mode = "k"})
+Akumulator tangkisan lokal = 0
+
+fungsi lokal PressParryKey()
+jika MimiwParry.Enabled tidak diaktifkan maka kembalikan akhir
+pcall(fungsi())
+VirtualInputManager:SendKeyEvent(true, MimiwParry.Key, false, game)
+tugas.tunggu(0.03)
+VirtualInputManager:SendKeyEvent(false, MimiwParry.Key, false, game)
+akhir)
+akhir
+
+RunService.Heartbeat:Hubungkan(fungsi(dt)
+jika MimiwParry.Enabled tidak diaktifkan maka kembalikan akhir
+parryAccumulator = parryAccumulator + dt
+jika parryAccumulator < Perf.Parry_Refresh maka kembalikan akhir
+Akumulator tangkis = 0
+
+Karakter lokal myChar = LP.Character
+lokal myRoot = myChar dan myChar:FindFirstChild("HumanoidRootPart")
+jika bukan myRoot maka kembalikan akhir
+untuk _, p dalam ipairs(Players:GetPlayers()) lakukan
+jika p ~= LP dan p.Character maka
+local theirRoot = p.Character:FindFirstChild("HumanoidRootPart")
+local theirHum = p.Character:FindFirstChildOfClass("Humanoid")
+jika theirRoot dan theirHum dan (theirRoot.Position - myRoot.Position).Magnitude <= MimiwParry.Range maka
+untuk _, lacak dalam ipairs(theirHum:GetPlayingAnimationTracks()) lakukan
+jika tidak terlihat Tracks[track] maka
+seenTracks[track] = true
+jika (track.Priority == Enum.AnimationPriority.Action atau track.Priority == Enum.AnimationPriority.Action2) dan (os.clock() - MimiwParry.LastParry >= MimiwParry.Cooldown) maka
+MimiwParry.LastParry = os.clock()
+tugas.tunda(MimiwParry.Tunda, TekanTombolParry)
+akhir
+akhir
+akhir
+akhir
+akhir
+akhir
+selesai)
+
+-- ============================================================
+-- 3. LOGIKA ESP (ANTI-FC & DUKUNGAN LABU)
+-- ============================================================
+local ESP_Status = {Survivor = false, Killer = false, Pallets = false, Windows = false, Gens = false, Traps = false, Pumpkins = false}
+local ESP_Colors = {Survivor = Color3.fromRGB(0, 255, 0), Killer = Color3.fromRGB(255, 0, 0), Pallets = Color3.fromRGB(0, 255, 255), Windows = Color3.fromRGB(255, 255, 0), Gens = Color3.fromRGB(150, 0, 255), Traps = Color3.fromRGB(255, 105, 180), Pumpkins = Color3.fromRGB(255, 140, 0)}
+cache ESP lokal = {}
+
+fungsi lokal CreateHighlight(obj, warna, nama)
+jika bukan obj atau ESP_Cache[obj] maka kembalikan akhir
+
+lokal hl = Instance.new("Sorotan")
+hl.Name = "HANX_ESP_" .. nama
+hl.Adornee = obj
+hl.FillColor = warna
+hl.OutlineColor = warna
+hl.FillTransparency = 0.5
+hl.OutlineTransparency = 0
+hl.Parent = obj
+ESP_Cache[obj] = hl
+akhir
+
+fungsi lokal RemoveHighlight(obj)
+jika ESP_Cache[obj] maka
+ESP_Cache[obj]:Hancurkan()
+ESP_Cache[obj] = nil
+akhir
+akhir
+
+fungsi lokal CheckObject(obj)
+jika bukan obj atau bukan obj:IsA("Model") dan bukan obj:IsA("BasePart") maka kembalikan akhir
+lokal n = string.lower(obj.Name)
+warna lokal = nol
+lokal isMap = false
+
+Jika n:find("pallet") dan ESP_Status.Pallets ada, maka warna = ESP_Colors.Pallets; isMap = true
+elseif n:find("window") and ESP_Status.Windows then color = ESP_Colors.Windows; isMap = true
+elseif n:find("generator") and ESP_Status.Gens then color = ESP_Colors.Gens; isMap = true
+elseif (n:find("trap") or n:find("bear") or n:find("snare")) and ESP_Status.Traps then color = ESP_Colors.Traps; isMap = true
+elseif (n:find("pumpkin") or n:find("labu")) and ESP_Status.Pumpkins then color = ESP_Colors.Pumpkins; isMap = true
+akhir
+
+jika isMap dan warna maka
+CreateHighlight(obj, color, "MapObj")
+akhir
+akhir
+
+tugas.munculkan(fungsi())
+ruang kerja.AnakDitambahkan:Hubungkan(PeriksaObjek)
+
+peta lokal = ruang kerja:TemukanAnakPertama("Peta")
+jika peta maka
+map.ChildAdded:Connect(CheckObject)
+untuk _, v dalam ipairs(map:GetChildren()) lakukan CheckObject(v)
+kalau tidak
+ruang kerja.AnakDitambahkan:Hubungkan(fungsi(anak))
+jika child.Name == "Map" maka
+anak.AnakDitambahkan:Hubungkan(PeriksaObjek)
+untuk _, v dalam ipairs(child:GetChildren()) lakukan CheckObject(v)
+akhir
+akhir)
+akhir
+akhir)
+
+fungsi lokal UpdatePlayerESP()
+jika ESP_Status.Survivor atau ESP_Status.Killer maka
+
+untuk _, plr dalam ipairs(Players:GetPlayers()) lakukan
+jika plr ~= LP dan plr.Character maka
+isKiller lokal = plr.Team dan plr.Team.Name:lower():find("killer")
+jika (isKiller dan ESP_Status.Killer) atau (not isKiller dan ESP_Status.Survivor) maka
+warna lokal = isKiller dan ESP_Colors.Killer atau ESP_Colors.Survivor
+CreateHighlight(plr.Character, color, isKiller and "Killer" or "Survivor")
+kalau tidak
+HapusSorotan(plr.Karakter)
+akhir
+akhir
+akhir
+kalau tidak
+
+untuk _, plr dalam ipairs(Players:GetPlayers()) lakukan
+jika plr.Character maka RemoveHighlight(plr.Character) end
+akhir
+akhir
+akhir
+
+tugas.munculkan(fungsi())
+while task.wait(Perf.ESP_Refresh) do
+pcall(UpdatePlayerESP)
+akhir
+akhir)
+
+-- ============================================================
+-- 4. PEMERIKSAAN KETERAMPILAN OTOMATIS (PERBAIKI NORMAL/ACAK)
+-- ============================================================
+lokal _G = _G atau getgenv() atau {}
+jika _G.Ox tidak ada maka _G.Ox = {} akhir
+_G.Ox.Auto = { SkillCheck = false, SkillCheckMode = "Normal" }
+_G.Ox.State = _G.Ox.State atau { sibuk = false }
+_G.Ox.Connections = _G.Ox.Connections atau { SkillHeartbeat = nil }
+
+fungsi lokal fn24()
+local playerGui2 = LP:FindFirstChild("PlayerGui")
+jika bukan playerGui2 maka kembalikan akhir
+local survivorMob = playerGui2:FindFirstChild("Survivor-mob")
+jika bukan survivorMob maka kembalikan akhir
+kontrol lokal = survivorMob:FindFirstChild("Kontrol")
+jika tidak ada kontrol maka kembalikan akhir
+local action = controls:FindFirstChild("action") or controls:FindFirstChild("check")
+
+Jika tidak ada tindakan, maka kembalikan akhir.
+
+jika tindakan:IsA("GuiButton") lalu
+pcall(fungsi())
+jika sinyal api maka
+sinyal api(aksi.TombolMouse1Down)
+tugas.tunggu(0.01)
+sinyal api(aksi.TombolMouse1Atas)
+Jika action.MouseButton1Click maka firesignal(action.MouseButton1Click) end
+kalau tidak
+aksi:Klik()
+akhir
+akhir)
+kembali
+akhir
+
+pcall(fungsi())
+Posisi absolut lokal = aksi.Posisi absolut
+Ukuran absolut lokal = aksi.Ukuran absolut
+local inset = GuiService:GetGuiInset()
+lokal cx = absPos.X + absSize.X / 2 + inset.X
+lokal cy = absPos.Y + absSize.Y / 2 + inset.Y
+VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
+tugas.tunggu(0.01)
+VirtualInputManager:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
+akhir)
+akhir
+
+fungsi lokal fn7()
+jika _G.Ox.Connections.SkillHeartbeat maka
+_G.Ox.Connections.SkillHeartbeat:Disconnect()
+_G.Ox.Connections.SkillHeartbeat = nil
+akhir
+
+_G.Ox.Connections.SkillHeartbeat = RunService.RenderStepped:Connect(function()
+jika _G.Ox.Auto.SkillCheck atau _G.Ox.State.busy tidak ada maka kembalikan nilai akhir
+
+local skillCheckPromptGui = playerGui:FindFirstChild("SkillCheckPromptGui")
+jika skillCheckPromptGui tidak ada maka kembalikan akhir
+pemeriksaan lokal = skillCheckPromptGui:FindFirstChild("Periksa")
+Jika tidak diperiksa atau tidak terlihat, maka kembalikan akhir.
+
+baris lokal = periksa:TemukanAnakPertama("Baris")
+tujuan lokal = periksa:TemukanAnakPertama("Tujuan")
+jika bukan garis atau bukan gawang maka kembali ke akhir
+
+local currentRot = line.Rotation % 360
+local goalRot = goal.Rotation % 360
+
+safeStart lokal = (goalRot + 110) % 360
+safeEnd lokal = (goalRot + 140) % 360
+
+zona lokal = salah
+jika safeEnd < safeStart maka
+inZone = (currentRot >= safeStart atau currentRot <= safeEnd)
+kalau tidak
+inZone = (currentRot >= safeStart dan currentRot <= safeEnd)
+akhir
+
+local distToStart = math.abs(currentRot - safeStart)
+local distToEnd = math.abs(currentRot - safeEnd)
+minDist lokal = math.min(distToStart, distToEnd)
+
+jika inZone atau (minDist < 3) maka
+_G.Ox.State.sibuk = benar
+
+jika _G.Ox.Auto.SkillCheckMode == "Acak" maka
+tugas.tunggu(matematika acak(5, 20) / 100)
+akhir
+
+fn24()
+tugas.tunggu(0.3)
+_G.Ox.State.sibuk = salah
+akhir
+akhir)
+akhir
+
+-- ============================================================
+-- 5. UTILITAS
+-- ============================================================
+lokal isFulbright = false
+Kecerahan asli lokal = Pencahayaan.Kecerahan
+antiAfkEnabled lokal = false
+
+-- ============================================================
+-- 6. KERANGKA KERJA UI
+-- ============================================================
+local old = CoreGui:FindFirstChild("HANX_HUB_UI") if old then old:Destroy() end
+local oldF = CoreGui:FindFirstChild("HANX_HUB_Logo") if oldF then oldF:Destroy() end
+local oldS = CoreGui:FindFirstChild("HANX_HUB_Splash") if oldS then oldS:Destroy() end
+
+Tema lokal = {
+Latar Belakang = Warna3.dariRGB(12, 12, 16), Sisi = Warna3.dariRGB(18, 18, 24), Kartu = Warna3.dariRGB(24, 24, 32),
+CardHover = Color3.fromRGB(32, 32, 42), Text = Color3.fromRGB(255, 255, 255), SubText = Color3.fromRGB(150, 150, 160),
+Neon = Color3.fromRGB(180, 80, 255), ToggleOff = Color3.fromRGB(45, 45, 55), Danger = Color3.fromRGB(255, 80, 80)
+}
+
+fungsi lokal corner(inst, r) lokal c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, r); c.Parent = inst end
+Fungsi lokal addStroke(inst, color, thickness, transparency) local s = Instance.new("UIStroke"); s.Color = color; s.Thickness = thickness or 1; s.Transparency = transparency or 0; s.Parent = inst return s end
+
+local Screen = Instance.new("ScreenGui"); Screen.Name = "HANX_HUB_UI"; Screen.ResetOnSpawn = false; Screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; Screen.IgnoreGuiInset = true; Screen.Enabled = false; Screen.Parent = CoreGui
+Jendela lokal = Instance.new("Frame"); Ukuran Jendela = UDim2.fromOffset(580, 420); Posisi Jendela = UDim2.new(0.5, -290, 0.5, -210); Warna Latar Belakang Jendela3 = Tema.Bg; Ukuran Piksel Batas Jendela = 0; Jendela.Aktif = true; Klip Turunan Jendela = true; Jendela Induk = Layar; sudut(Jendela, 12); tambahkan Garis Tepi (Jendela, Tema.Neon, 1.5, 0.5)
+lokal TopBar = Instance.new("Bingkai"); TopBar.Ukuran = UDim2.baru(1, 0, 0, 45); TopBar.BackgroundTransparency = 1; TopBar.Parent = Jendela
+Judul lokal = Instance.new("TextLabel"); Ukuran Judul = UDim2.new(1, -100, 1, 0); Posisi Judul = UDim2.fromOffset(20, 0); Transparansi Latar Belakang Judul = 1; Teks Judul = "HANX HUB"; Warna Teks Judul3 = Theme.Neon; Font Judul = Enum.Font.GothamBlack; Ukuran Teks Judul = 16; Penyelarasan Teks X Judul = Enum.TextXAlignment.Left; Induk Judul = TopBar
+Teks Teks lokal = Instance.new("TextLabel"); Ukuran Teks Teks = UDim2.new(1, -100, 1, 0); Posisi Teks Teks = UDim2.fromOffset(110, 0); Transparansi Latar Belakang Teks Teks = 1; Teks Teks Teks = "| Edisi VD"; Warna Teks Teks Teks Teks = Theme.SubText; Font Teks ...
+
+seret lokal, dragStart, startPos
+TopBar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = Window.Position; input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end) end end)
+UserInputService.InputChanged:Connect(function(input) if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then local delta = input.Position - dragStart; Window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
+
+local FloatGui = Instance.new("ScreenGui"); FloatGui.Name = "HANX_HUB_Logo"; FloatGui.ResetOnSpawn = false; FloatGui.Parent = CoreGui
+local LogoBtn = Instance.new("TextButton"); LogoBtn.Size = UDim2.fromOffset(55, 55); LogoBtn.Position = UDim2.new(0, 20, 0.5, -27); LogoBtn.BackgroundColor3 = Theme.Card; LogoBtn.Text = "H"; LogoBtn.TextColor3 = Theme.Neon; LogoBtn.Font = Enum.Font.GothamBlack; LogoBtn.TextSize = 24; LogoBtn.BorderSizePixel = 0; LogoBtn.Visible = false; LogoBtn.Active = true; LogoBtn.Parent = FloatGui; corner(LogoBtn, 27); addStroke(LogoBtn, Theme.Neon, 2, 0)
+lokal lDrag, lStart, lPos
+LogoBtn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then lDrag = true; lStart = i.Position; lPos = LogoBtn.Position; i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then lDrag = false end end) end end)
+UserInputService.InputChanged:Connect(function(i) if lDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - lStart; LogoBtn.Position = UDim2.new(lPos.X.Scale, lPos.X.Offset + dX, lPos.Y.Scale, lPos.Y.Offset + dY) end end)
+
+local CloseBtn = Instance.new("TextButton"); CloseBtn.Size = UDim2.fromOffset(24, 24); CloseBtn.Position = UDim2.new(1, -35, 0, 10); CloseBtn.BackgroundTransparency = 1; CloseBtn.Text = "X"; CloseBtn.TextColor3 = Theme.SubText; CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 14; CloseBtn.Parent = TopBar
+CloseBtn.MouseButton1Click:Connect(function() dragging = false; lDrag = false; Screen:Remove(); FloatGui:Remove() end)
+
+local MinBtn = Instance.new("TextButton"); MinBtn.Size = UDim2.fromOffset(24, 24); MinBtn.Position = UDim2.new(1, -65, 0, 10); MinBtn.BackgroundTransparency = 1; MinBtn.Text = "-"; MinBtn.TextColor3 = Theme.SubText; MinBtn.Font = Enum.Font.GothamBold; MinBtn.TextSize = 18; MinBtn.Parent = TopBar
+MinBtn.MouseButton1Click:Connect(function() TweenService:Create(Window, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.fromOffset(0,0)}):Play(); task.wait(0.3); Window.Visible = false; LogoBtn.Visible = true end)
+LogoBtn.MouseButton1Click:Connect(function() LogoBtn.Visible = false; Window.Visible = true; TweenService:Create(Window, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.fromOffset(580, 420)}):Play() end)
+
+Sidebar lokal = Instance.new("Frame"); Sidebar.Size = UDim2.new(0, 150, 1, -55); Sidebar.Position = UDim2.fromOffset(10, 45); Sidebar.BackgroundColor3 = Theme.Sidebar; Sidebar.BorderSizePixel = 0; Sidebar.Parent = Window; corner(Sidebar, 8); addStroke(Sidebar, Color3.fromRGB(40,40,45), 1, 0)
+local SideLayout = Instance.new("UIListLayout"); SideLayout.SortOrder = Enum.SortOrder.LayoutOrder; SideLayout.Padding = UDim.new(0, 5); SideLayout.Parent = Sidebar
+local SidePad = Instance.new("UIPadding"); SidePad.PaddingTop = UDim.new(0, 12); SidePad.PaddingLeft = UDim.new(0, 8); SidePad.PaddingRight = UDim.new(0, 8); SidePad.Parent = Sidebar
+Konten lokal = Instance.new("Frame"); Ukuran Konten = UDim2.new(1, -175, 1, -55); Posisi Konten = UDim2.fromOffset(165, 45); Transparansi Latar Belakang Konten = 1; Klip Turunan Konten = true; Induk Konten = Jendela
+
+Tab lokal, Halaman = {}, {}
+Fungsi lokal SelectTab(indeks) untuk i, t dalam ipairs(Tabs) lakukan jika i == indeks maka t.BackgroundColor3 = Theme.Card; t.TextColor3 = Theme.Neon; Pages[i].Visible = true else t.BackgroundColor3 = Theme.Sidebar; t.TextColor3 = Theme.SubText; Pages[i].Visible = false end end end
+fungsi lokal CreateTab(nama, ikon)
+local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1, 0, 0, 34); btn.BackgroundColor3 = Theme.Sidebar; btn.Text = " " .. icon .. " " .. name; btn.TextColor3 = Theme.SubText; btn.Font = Enum.Font.GothamSemibold; btn.TextSize = 12; btn.TextXAlignment = Enum.TextXAlignment.Left; btn.BorderSizePixel = 0; btn.Parent = Sidebar; corner(btn, 6)
+btn.MouseEnter:Connect(function() if btn.BackgroundColor3 ~= Theme.Card then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Card, TextColor3 = Theme.Text}):Play() end end)
+btn.MouseLeave:Connect(function() if btn.BackgroundColor3 ~= Theme.Card then TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Sidebar, TextColor3 = Theme.SubText}):Play() end end)
+halaman lokal = Instance.new("ScrollingFrame"); ukuran halaman = UDim2.fromScale(1, 1); transparansi latar belakang halaman = 1; ukuran piksel batas halaman = 0; ketebalan bilah gulir halaman = 3; warna gambar bilah gulir halaman = Theme.Neon; halaman terlihat = false; induk halaman = Konten
+daftar lokal = Instance.new("UIListLayout"); daftar.UrutanSort = Enum.UrutanSort.UrutanTata Letak; daftar.Padding = UDim.new(0, 8); daftar.Induk = halaman
+table.insert(Tabs, btn); table.insert(Pages, page)
+Indeks tab lokal = #Tab
+btn.MouseButton1Click:Connect(function() SelectTab(tabIndex) end)
+kembali ke halaman
+akhir
+
+fungsi lokal CreateMimiwButton(parent, text, defaultColor, note, callback)
+lokal hasNote = catatan dan catatan ~= ""
+local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1, -10, 0, hasNote and 55 or 40); btn.BackgroundColor3 = defaultColor or Theme.Card; btn.Text = ""; btn.BorderSizePixel = 0; btn.AutoButtonColor = false; btn.Parent = parent; corner(btn, 8); local stroke = addStroke(btn, Theme.Neon, 1, 0.8)
+
+Teks utama lokal = Instance.new("TextLabel"); Ukuran Teks utama = UDim2.new(1, 0, 1, 0); Posisi Teks utama = UDim2.new(0, 0, 0, hasNote dan -8 atau 0); Transparansi Latar Belakang Teks utama = 1; Teks utama = teks; Warna Teks utama 3 = Tema.Teks; Font Teks utama = Enum.Font.GothamBold; Ukuran Teks utama = 13; Penyelarasan Teks X utama = Enum.TextXAlignment.Center; Penyelarasan Teks Y utama = Enum.TextYAlignment.Center; Teks utama.Induk = btn
+
+jika hasNote maka
+noteLbl lokal = Instance.new("TextLabel"); noteLbl.Size = UDim2.new(1, -10, 0, 15); noteLbl.Position = UDim2.new(0, 5, 1, -20); noteLbl.BackgroundTransparency = 1; noteLbl.Text = note; noteLbl.TextColor3 = Theme.SubText; noteLbl.Font = Enum.Font.Gotham; noteLbl.TextSize = 10; noteLbl.TextXAlignment = Enum.TextXAlignment.Center; noteLbl.Parent = btn
+tombol:SetAttribute("NoteLabel", noteLbl)
+akhir
+
+btn.MouseEnter:Connect(function() TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0}):Play(); TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.CardHover}):Play() end)
+btn.MouseLeave:Connect(function() TweenService:Create(stroke, TweenInfo.new(0.2), {Transparency = 0.8}):Play(); TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = defaultColor or Theme.Card}):Play() end)
+
+btn.MouseButton1Click:Connect(function() if callback then pcall(callback, btn, mainText) end end)
+kembalikan tombol, teks utama
+akhir
+
+fungsi lokal CreateCheckbox(parent, title, default, callback)
+kartu lokal = Instance.new("Frame"); kartu.Ukuran = UDim2.new(1, -10, 0, 40); kartu.WarnaLatarBelakang3 = Tema.Kartu; kartu.UkuranBatasPiksel = 0; kartu.Induk = induk; sudut(kartu, 8); tambahkanGaris(kartu, Warna3.fromRGB(50, 50, 60), 1, 0)
+local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.new(1, -50, 1, 0); lbl.Position = UDim2.fromOffset(15, 0); lbl.BackgroundTransparency = 1; lbl.Text = title; lbl.TextColor3 = Theme.Text; lbl.Font = Enum.Font.GothamMedium; lbl.TextSize = 13; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = card
+local tBg = Instance.new("Frame"); tBg.Size = UDim2.fromOffset(40, 20); tBg.Position = UDim2.new(1, -50, 0.5, -10); tBg.BackgroundColor3 = default and Theme.Neon or Theme.ToggleOff; tBg.BorderSizePixel = 0; tBg.Parent = card; corner(tBg, 10)
+titik lokal = Instance.new("Frame"); titik.Ukuran = UDim2.fromOffset(16, 16); titik.Posisi = default dan UDim2.fromOffset(22, 2) atau UDim2.fromOffset(2, 2); titik.WarnaLatar3 = Warna3.baru(1,1,1); titik.Induk = tBg; sudut(titik, 8)
+local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1, 0, 1, 0); btn.BackgroundTransparency = 1; btn.Text = ""; btn.Parent = tBg
+keadaan lokal = default
+btn.MouseButton1Click:Connect(function() state = not state; if state then TweenService:Create(tBg, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Neon}):Play(); TweenService:Create(dot, TweenInfo.new(0.2), {Position = UDim2.fromOffset(22, 2)}):Play() else TweenService:Create(tBg, TweenInfo.new(0.2), {BackgroundColor3 = Theme.ToggleOff}):Play(); TweenService:Create(dot, TweenInfo.new(0.2), {Position = UDim2.fromOffset(2, 2)}):Play() end; if callback then pcall(callback, state) end end)
+akhir
+
+fungsi lokal CreateLabel(parent, text)
+lbl lokal = Instance.new("TextLabel"); lbl.Size = UDim2.new(1, -10, 0, 30); lbl.BackgroundTransparency = 1; lbl.Text = text; lbl.TextColor3 = Theme.Neon; lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 14; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = parent
+akhir
+
+-- ============================================================
+-- 7. TAB PEMBANGUNAN
+-- ============================================================
+Halaman Beranda lokal = BuatTab("Beranda", "H")
+local PvPPage = CreateTab("Fitur", "F")
+Halaman Utilitas lokal = BuatTab("Pemain", "P")
+Halaman Utilitas lokal = BuatTab("Utilitas", "U")
+local SoonPage = CreateTab("Segera", "B")
+local SocialPage = CreateTab("Media Sosial", "S")
+
+-- BERANDA TAB ISI
+local ProfileCard = Instance.new("Frame"); ProfileCard.Size = UDim2.new(1, -10, 0, 80); ProfileCard.BackgroundColor3 = Theme.Card; ProfileCard.BorderSizePixel = 0; ProfileCard.Parent = HomePage; corner(ProfileCard, 8); addStroke(ProfileCard, Theme.Neon, 1, 0.8)
+Avatar lokal = Instance.new("ImageLabel"); Avatar.Size = UDim2.fromOffset(60, 60); Avatar.Position = UDim2.fromOffset(10, 10); Avatar.BackgroundColor3 = Theme.Sidebar; Avatar.Image = "rbxthumb://type=AvatarHeadShot&id="..LP.UserId.."&w=150&h=150"; Avatar.Parent = ProfileCard; corner(Avatar, 30)
+local NameLbl = Instance.new("TextLabel"); NameLbl.Size = UDim2.new(1, -80, 0, 20); NameLbl.Position = UDim2.fromOffset(80, 15); NameLbl.BackgroundTransparency = 1; NameLbl.Text = LP.DisplayName; NameLbl.TextColor3 = Theme.Text; NameLbl.Font = Enum.Font.GothamBold; NameLbl.TextSize = 16; NameLbl.TextXAlignment = Enum.TextXAlignment.Left; NameLbl.Parent = ProfileCard
+local StatusLbl = Instance.new("TextLabel"); StatusLbl.Size = UDim2.new(1, -80, 0, 20); StatusLbl.Position = UDim2.fromOffset(80, 40); StatusLbl.BackgroundTransparency = 1; StatusLbl.Text = "Status: Pengguna Gratis"; StatusLbl.TextColor3 = Theme.Neon; StatusLbl.Font = Enum.Font.Gotham; StatusLbl.TextSize = 12; StatusLbl.TextXAlignment = Enum.TextXAlignment.Left; StatusLbl.Parent = ProfileCard
+
+-- FITUR TAB ISI (ESP)
+CreateLabel(PvPPage, "Pengaturan ESP")
+CreateCheckbox(PvPPage, "Survivor ESP", false, function(s) ESP_Status.Survivor = s end)
+CreateCheckbox(PvPPage, "Killer ESP", false, function(s) ESP_Status.Killer = s end)
+CreateCheckbox(PvPPage, "Pallet ESP", false, function(s) ESP_Status.Pallets = s end)
+CreateCheckbox(PvPPage, "Window ESP", false, function(s) ESP_Status.Windows = s end)
+CreateCheckbox(PvPPage, "Generator ESP", false, function(s) ESP_Status.Gens = s end)
+CreateCheckbox(PvPPage, "Trap ESP", false, function(s) ESP_Status.Traps = s end)
+CreateCheckbox(PvPPage, "Pumpkin ESP", false, function(s) ESP_Status.Pumpkins = s end)
+
+-- PEMAIN TAB ISI (TELEPORT)
+CreateLabel(UtilPage, "Teleportasi Pemain")
+local selectBtn, selectTxt = CreateMimiwButton(UtilPage, "Pilih Pemain...", Theme.Card, "Klik untuk melihat daftar pemain", function(btn, txt))
+nama lokal = GetPlayerNames()
+jika _G.HANX_TempList ada maka _G.HANX_TempList:Destroy() selesai
+listFrame lokal = Instance.new("Frame"); listFrame.Name = "TempList"; listFrame.Size = UDim2.new(1, -10, 0, #names * 35); listFrame.BackgroundTransparency = 1; listFrame.Parent = UtilPage; _G.HANX_TempList = listFrame
+uiList lokal = Instance.new("UIListLayout"); uiList.Padding = UDim.new(0, 5); uiList.Parent = listFrame
+untuk _, nama dalam ipairs(nama) lakukan
+local pBtn = Instance.new("TextButton"); pBtn.Size = UDim2.new(1, 0, 0, 30); pBtn.BackgroundColor3 = Theme.Sidebar; pBtn.Text = name; pBtn.TextColor3 = Theme.Text; pBtn.Font = Enum.Font.Gotham; pBtn.TextSize = 12; pBtn.Parent = listFrame; corner(pBtn, 6)
+pBtn.MouseButton1Click:Connect(function() selectedPlayer = name; txt.Text = "Selected: " .. name; txt.TextColor3 = Theme.Neon; listFrame:Destroy(); _G.HANX_TempList = nil end)
+akhir
+akhir)
+local tpBtn, tpTxt = CreateMimiwButton(UtilPage, "Teleport ke Pemain", Theme.Card, "Teleport secara instan", function(btn, txt)
+Jika selectedPlayer ada, maka TeleportToPlayer(selectedPlayer); txt.Text = "Berhasil diteleportasi!"; task.wait(1.5); txt.Text = "Teleport ke Pemain"
+else txt.Text = "Pilih pemain terlebih dahulu!"; task.wait(1.5); txt.Text = "Teleport ke Pemain" end
+akhir)
+local followBtn, followTxt = CreateMimiwButton(UtilPage, "Ikuti Pemain: NONAKTIF", Theme.ToggleOff, "Ikuti pemain yang dipilih", function(btn, txt))
+Jika pemain tidak dipilih, maka txt.Text = "Pilih pemain terlebih dahulu!"; task.wait(1.5); txt.Text = "Ikuti Pemain: NONAKTIF"; return end
+isFollowing = bukan isFollowing
+jika isFollowing maka
+txt.Text = "Ikuti Pemain: AKTIF"; btn.BackgroundColor3 = Theme.Neon; txt.TextColor3 = Theme.Bg
+Jika followThread maka task.cancel(followThread) end
+followThread = task.spawn(function()
+sementara isFollowing lakukan
+target lokal = Pemain:TemukanAnakPertama(Pemain yang dipilih)
+jika target dan target.Character maka
+local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+Jika targetRoot dan myRoot ada, maka local dist = (targetRoot.Position - myRoot.Position).Magnitude; jika dist > 5 maka myRoot.CFrame = myRoot.CFrame:Lerp(targetRoot.CFrame + Vector3.new(0, 3, 0), 0.2) end end
+else isFollowing = false; txt.Text = "Ikuti Pemain: NONAKTIF"; btn.BackgroundColor3 = Theme.ToggleOff; txt.TextColor3 = Theme.Text end
+tugas.tunggu(0.1)
+akhir
+akhir)
+kalau tidak
+txt.Text = "Ikuti Pemain: NONAKTIF"; btn.BackgroundColor3 = Theme.ToggleOff; txt.TextColor3 = Theme.Text
+Jika followThread dijalankan, maka task.cancel(followThread); followThread = nil.
+akhir
+akhir)
+CreateMimiwButton(UtilPage, "Reset Karakter", Theme.Card, "Respawn instantly", function()
+Jika LP.Character ada, maka local hum = LP.Character:FindFirstChildOfClass("Humanoid"); jika hum ada, maka hum.Health = 0.
+akhir)
+
+-- UTILITAS TAB ISI
+CreateLabel(UtilityPage, "Pengaturan Dunia")
+CreateMimiwButton(UtilityPage, "Fulbright: OFF", Theme.ToggleOff, "Membuat peta menjadi terang", function(btn, txt))
+isFulbright = bukan isFulbright
+txt.Text = "Fullbright: " .. (isFulbright dan "ON" atau "OFF")
+btn.BackgroundColor3 = isFullbright dan Theme.Neon atau Theme.ToggleOff
+txt.TextColor3 = isFullbright dan Theme.Bg atau Theme.Text
+jika isFullbright maka
+Pencahayaan.Kecerahan = 3
+Pencahayaan.WaktuJam = 14
+Pencahayaan.Ambient = Warna3.dariRGB(200, 200, 200)
+kalau tidak
+Lighting.Brightness = originalBrightness
+Pencahayaan.WaktuJam = 14
+Pencahayaan.Ambient = Warna3.dariRGB(70, 70, 70)
+akhir
+akhir)
+
+CreateLabel(UtilityPage, "Sistem")
+CreateMimiwButton(UtilityPage, "Anti-AFK: OFF", Theme.ToggleOff, "Mencegah pengusiran saat tidak aktif", function(btn, txt))
+antiAfkEnabled = tidak antiAfkEnabled
+txt.Text = "Anti-AFK: " .. (antiAfkEnabled dan "ON" atau "OFF")
+btn.BackgroundColor3 = antiAfkEnabled dan Theme.Neon atau Theme.ToggleOff
+txt.TextColor3 = antiAfkEnabled dan Theme.Bg atau Theme.Text
+jika antiAfkEnabled maka
+tugas.munculkan(fungsi())
+sementara antiAfkEnabled lakukan
+tugas.tunggu(60)
+pcall(fungsi())
+Pengguna Virtual lokal = game:GetService("Pengguna Virtual")
+VirtualUser:CaptureController()
+VirtualUser:ClickButton2(Vector2.new())
+akhir)
+akhir
+akhir)
+akhir
+akhir)
+
+-- TAB ISI SEGERA HADIR (TANGKIS & CEK KETERAMPILAN)
+CreateLabel(SoonPage, "Mimiw Auto Parry V2 (Beta)")
+local parryBtn, parryTxt = CreateMimiwButton(SoonPage, "Tangkisan Otomatis: NONAKTIF", Theme.ToggleOff, "Status: Tidak Aktif", function(btn, textLbl)
+MimiwParry.Enabled = bukan MimiwParry.Enabled
+textLbl.Text = "Balisan Otomatis: " .. (MimiwParry.Enabled dan "ON" atau "OFF")
+btn.BackgroundColor3 = MimiwParry.Enabled dan Theme.Neon atau Theme.ToggleOff
+textLbl.TextColor3 = MimiwParry.Enabled dan Theme.Bg atau Theme.Text
+catatan lokal = btn:GetAttribute("Label Catatan")
+Jika ada catatan, maka note.Text = "Status: " .. (MimiwParry.Enabled dan "Active" atau "Inactive") end
+akhir)
+
+local rangeBtn, rangeTxt = CreateMimiwButton(SoonPage, "Rentang: 9 (ketuk untuk mengubah)", Theme.Card, "Deteksi Pembunuh dalam jangkauan", function(btn, textLbl)
+MimiwParry.Range = MimiwParry.Range + 2; jika MimiwParry.Range > 20 maka MimiwParry.Range = 4;
+textLbl.Text = "Rentang: " .. MimiwParry.Range .. " (ketuk untuk mengubah)"
+akhir)
+
+local delayBtn, delayTxt = CreateMimiwButton(SoonPage, "Tunda: 0.1 (ketuk untuk mengubah)", Theme.Card, "Waktu sebelum menangkis", function(btn, textLbl)
+MimiwParry.Delay = MimiwParry.Delay + 0.05; jika MimiwParry.Delay > 0.3 maka MimiwParry.Delay = 0 selesai;
+MimiwParry.Delay = math.floor(MimiwParry.Delay * 100 + 0.5) / 100;
+textLbl.Text = "Penundaan: " .. MimiwParry.Delay .. " (ketuk untuk mengubah)"
+akhir)
+
+local keyBtn, keyTxt = CreateMimiwButton(SoonPage, "Tombol Tangkis: F", Theme.Card, "Ubah tombol tangkis", function(btn, textLbl)
+MimiwParry.KeyIndex = MimiwParry.KeyIndex % #KEYS + 1;
+MimiwParry.Key = KEYS[MimiwParry.KeyIndex][2];
+textLbl.Text = "Kunci Tangkis: " .. KEYS[MimiwParry.KeyIndex][1]
+akhir)
+
+CreateLabel(SoonPage, "Pemeriksaan Keterampilan Otomatis (Pandu)")
+local scBtn, scTxt = CreateMimiwButton(SoonPage, "Pemeriksaan Keterampilan Otomatis: NONAKTIF", Theme.ToggleOff, "Mode: Normal", function(btn, txt))
+_G.Ox.Auto.SkillCheck = bukan _G.Ox.Auto.SkillCheck
+txt.Text = "Pemeriksaan Keterampilan Otomatis: " .. (_G.Ox.Auto.SkillCheck dan "ON" atau "OFF")
+btn.BackgroundColor3 = _G.Ox.Auto.SkillCheck dan Theme.Neon atau Theme.ToggleOff
+txt.TextColor3 = _G.Ox.Auto.SkillCheck dan Theme.Bg atau Theme.Text
+
+catatan lokal = btn:GetAttribute("Label Catatan")
+jika ada catatan maka catatan.Teks = "Mode: " .. _G.Ox.Auto.SkillCheckMode end
+
+Jika _G.Ox.Auto.SkillCheck ada, maka fn7() ada; jika tidak, jika _G.Ox.Connections.SkillHeartbeat ada, maka _G.Ox.Connections.SkillHeartbeat:Disconnect(); _G.Ox.Connections.SkillHeartbeat = nil.
+akhir)
+
+local modeBtn, modeTxt = CreateMimiwButton(SoonPage, "Mode: Normal (ketuk untuk mengubah)", Theme.Card, "Saat ini: Normal", function(btn, txt))
+jika _G.Ox.Auto.SkillCheckMode == "Normal" maka
+_G.Ox.Auto.SkillCheckMode = "Acak"
+kalau tidak
+_G.Ox.Auto.SkillCheckMode = "Normal"
+akhir
+txt.Text = "Mode: " .. _G.Ox.Auto.SkillCheckMode .. " (ketuk untuk mengubah)"
+catatan lokal = btn:GetAttribute("Label Catatan")
+jika ada catatan maka catatan.Teks = "Saat ini: " .. _G.Ox.Auto.SkillCheckMode end
+Jika scBtn ada, maka scNote lokal = scBtn:GetAttribute("NoteLabel"); jika scNote ada, maka scNote.Text = "Mode: " .. _G.Ox.Auto.SkillCheckMode end end
+akhir)
+
+-- ISI TAB MEDIA SOSIAL
+CreateLabel(SocialPage, "Gabung Komunitas Kami")
+CreateLabel(SocialPage, "Ikuti untuk pembaruan dan skrip lainnya!")
+
+local discordBtn, discordTxt = CreateMimiwButton(SocialPage, "SERVER DISCORD", Theme.Card, "Klik untuk membuka tautan undangan", function(btn, txt))
+Jika clipboard diaktifkan, maka setclipboard(" https://discord.gg/p6RrUTr8V "); txt.Text = "Membuka Tautan..."; txt.TextColor3 = Theme.Neon
+local success = pcall(function() if openbrowser then openbrowser(" https://discord.gg/p6RrUTr8V ") elseif request then request({Url = " https://discord.gg/p6RrUTr8V ", Method = "GET"}) end end)
+Jika tidak berhasil maka txt.Text = "Tautan disalin! Tempel di browser." end
+task.wait(2); txt.Text = "SERVER DISCORD"; txt.TextColor3 = Theme.Text end
+akhir)
+local ytBtn, ytTxt = CreateMimiwButton(SocialPage, "SALURAN YOUTUBE", Theme.Card, "Berlangganan untuk skrip lainnya!", function(btn, txt))
+Jika clipboard diaktifkan, maka gunakan " https://youtube.com/@hanxhub " untuk membuka tautan. Teks akan diisi dengan "Membuka tautan...". Warna teks akan diubah menjadi Theme.Neon.
+local success = pcall(function() if openbrowser then openbrowser(" https://youtube.com/@hanxhub ") elseif request then request({Url = " https://youtube.com/@hanxhub ", Method = "GET"}) end end)
+Jika tidak berhasil maka txt.Text = "Tautan disalin! Tempel di browser." end
+task.wait(2); txt.Text = "SALURAN YOUTUBE"; txt.TextColor3 = Theme.Text end
+akhir)
+local ttBtn, ttTxt = CreateMimiwButton(SocialPage, "TIKTOK", Theme.Card, "Ikuti untuk tips & trik", function(btn, txt))
+Jika clipboard diaktifkan, maka gunakan "https://tiktok.com/@whoohnbro_ " untuk membuka tautan. Teks akan diisi dengan "Membuka tautan...". Warna teks akan diubah menjadi Theme.Neon.
+local success = pcall(function() if openbrowser then openbrowser("https://tiktok.com/@whoohnbro_ ") elseif request then request({Url = "https://tiktok.com/@whoohnbro_ ", Method = "GET"}) end end)
+Jika tidak berhasil maka txt.Text = "Tautan disalin! Tempel di browser." end
+task.wait(2); txt.Text = "TIKTOK"; txt.TextColor3 = Theme.Text end
+akhir)
+local swBtn, swTxt = CreateMimiwButton(SocialPage, "SAWERIA", Theme.Card, "Dukungan untuk konten lebih banyak!", function(btn, txt))
+Jika clipboard diaktifkan, maka gunakan " https://saweria.co/hanxhub " untuk membuka tautan. Teks akan diisi dengan "Membuka tautan...". Warna teks akan diubah menjadi Theme.Neon.
+local success = pcall(function() if openbrowser then openbrowser(" https://saweria.co/hanxhub ") elseif request then request({Url = " https://saweria.co/hanxhub ", Method = "GET"}) end end)
+Jika tidak berhasil maka txt.Text = "Tautan disalin! Tempel di browser." end
+task.wait(2); txt.Text = "SAWERIA"; txt.TextColor3 = Theme.Text end
+akhir)
+
+-- ============================================================
+-- 8. TANDA AIR & PENGAIT TOMBOL
+-- ============================================================
+local WatermarkGui = Instance.new("ScreenGui")
+WatermarkGui.Name = "HANX_Watermark"
+WatermarkGui.ResetOnSpawn = false
+WatermarkGui.Parent = CoreGui
+
+Tanda Air lokal = Instance.new("TextLabel")
+Ukuran Tanda Air = UDim2.dariOffset(150, 20)
+Tanda air.Posisi = UDim2.baru(0, 10, 0, 10)
+Tanda air.Transparansi latar belakang = 1
+Watermark.Text = "HANX HUB | Premium"
+Watermark.TextColor3 = Theme.Neon
+Watermark.TextStrokeTransparency = 0
+Watermark.Font = Enum.Font.GothamBold
+Ukuran Teks Tanda Air = 12
+Tanda air.Induk = WatermarkGui
+
+local keybindState = { Parry = false, ESP = false }
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed))
+Jika gameProcessed maka kembalikan akhir
+
+jika input.KeyCode == Enum.KeyCode.P maka
+keybindState.Parry = bukan keybindState.Parry
+MimiwParry.Enabled = keybindState.Parry
+jika parryBtn dan parryTxt maka
+parryTxt.Text = "Tangkisan Otomatis: " .. (keybindState.Parry dan "ON" atau "OFF")
+parryBtn.BackgroundColor3 = keybindState.Parry dan Theme.Neon atau Theme.ToggleOff
+parryTxt.TextColor3 = keybindState.Parry dan Theme.Bg atau Theme.Text
+catatan lokal = parryBtn:GetAttribute("NoteLabel")
+jika ada catatan maka note.Text = "Status: " .. (keybindState.Parry dan "Active" atau "Inactive") end
+akhir
+print("[HANX HUB] Tangkis Otomatis (Tombol P):", keybindState.Parry)
+akhir
+
+jika input.KeyCode == Enum.KeyCode.V maka
+keybindState.ESP = bukan keybindState.ESP
+ESP_Status.Survivor = keybindState.ESP
+ESP_Status.Killer = keybindState.ESP
+print("[HANX HUB] ESP (Keybind V):", keybindState.ESP)
+akhir
+akhir)
+
+-- ============================================================
+-- 9. LAYAR PEMBUKA & ANIMASI PEMBUKA
+-- ============================================================
+local SplashGui = Instance.new("ScreenGui"); SplashGui.Name = "HANX_HUB_Splash"; SplashGui.ResetOnSpawn = false; SplashGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; SplashGui.IgnoreGuiInset = true; SplashGui.DisplayOrder = 999; SplashGui.Parent = CoreGui
+local SplashBg = Instance.new("Frame"); SplashBg.Size = UDim2.fromScale(1, 1); SplashBg.BackgroundColor3 = Color3.new(0,0,0); SplashBg.BackgroundTransparency = 1; SplashBg.BorderSizePixel = 0; SplashBg.Parent = SplashGui
+local SplashBox = Instance.new("Frame"); SplashBox.Size = UDim2.fromOffset(280, 120); SplashBox.Position = UDim2.new(0.5, -140, 0.5, -60); SplashBox.BackgroundColor3 = Color3.fromRGB(15, 15, 18); SplashBox.BackgroundTransparency = 0.2; SplashBox.BorderSizePixel = 0; SplashBox.Parent = SplashGui; corner(SplashBox, 10); addStroke(SplashBox, Theme.Neon, 1, 0.5)
+local SplashTitle = Instance.new("TextLabel"); SplashTitle.Size = UDim2.new(1, 0, 0, 40); SplashTitle.Position = UDim2.new(0, 0, 0, 20); SplashTitle.BackgroundTransparency = 1; SplashTitle.Text = "HANX HUB"; SplashTitle.TextColor3 = Theme.Neon; SplashTitle.Font = Enum.Font.GothamBlack; SplashTitle.TextSize = 24; SplashTitle.Parent = SplashBox
+local SplashSub = Instance.new("TextLabel"); SplashSub.Size = UDim2.new(1, 0, 0, 20); SplashSub.Position = UDim2.new(0, 0, 0, 55); SplashSub.BackgroundTransparency = 1; SplashSub.Text = "Memuat skrip..."; SplashSub.TextColor3 = Theme.SubText; SplashSub.Font = Enum.Font.Gotham; SplashSub.TextSize = 12; SplashSub.Parent = SplashBox
+local BarBg = Instance.new("Frame"); BarBg.Size = UDim2.new(1, -40, 0, 6); BarBg.Position = UDim2.new(0, 20, 1, -20); BarBg.BackgroundColor3 = Theme.Sidebar; BarBg.BorderSizePixel = 0; BarBg.Parent = SplashBox; corner(BarBg, 3)
+BarFill lokal = Instance.new("Frame"); BarFill.Size = UDim2.fromScale(0, 1); BarFill.BackgroundColor3 = Theme.Neon; BarFill.BorderSizePixel = 0; BarFill.Parent = BarBg; corner(BarFill, 3)
+
+tugas.munculkan(fungsi())
+TweenService:Create(BarFill, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromScale(1, 1)}):Play()
+tugas.tunggu(1.6)
+TweenService:Create(SplashBox, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+TweenService:Create(SplashTitle, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+TweenService:Create(SplashSub, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+TweenService:Create(BarBg, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+TweenService:Create(BarFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+tugas.tunggu(0.3)
+SplashGui:Hancurkan()
+
+Layar.Diaktifkan = benar
+Ukuran Jendela = UDim2.fromOffset(0, 0)
+tugas.tunggu(0.1)
+TweenService:Create(Window, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(580, 420)}):Play()
+
+tugas.tunggu(0.4)
+PilihTab(1)
+print("[HANX HUB] Termuat.")
+akhir)
+Sembunyikan kutipan teks
+
+Pada Sel, 27 Okt 2026 pukul 20.46 Farhan AP < farhanw1833@gmail.com > menulis:
+-- ==========================================
+NamaKamu lokal = "HANXHUB"
+Tautan lokal TikTok = " https://www.tiktok.com/@whoohnbro_ "
+Tautan lokal YouTube = " https://youtube.com/@hannxhub?si=FqmMCAE3nJhTD-u0 "
+Tautan lokal WA = " https://whatsapp.com/channel/0029Vb94hQl3LdQTdlkiCf0P "
+Tautan lokal Saweria = " https://saweria.co/HANXHUB "
+-- ==========================================
+Pemain lokal = game:GetService("Pemain")
+Pemain Lokal = Pemain.Pemain Lokal
+CoreGui lokal = game:GetService("CoreGui")
+RunService lokal = permainan:GetService("RunService")
+Layanan Input Pengguna lokal = game:GetService("Layanan Input Pengguna")
+Layanan Tween lokal = game:GetService("Layanan Tween")
+
+Status lokal = {Penyintas = false, Pembunuh = false, Palet = false, Jendela = false, Generator = false, Perangkap = false, Labu = false, Kecepatan = false, Noclip = false, FOV = false}
+Warna lokal = {Penyintas = Warna3.dariRGB(0, 255, 0), Pembunuh = Warna3.dariRGB(255, 0, 0), Palet = Warna3.dariRGB(0, 255, 255), Jendela = Warna3.dariRGB(255, 255, 0), Generator = Warna3.dariRGB(150, 0, 255), Perangkap = Warna3.dariRGB(255, 105, 180), Labu = Warna3.dariRGB(255, 140, 0)}
+Daftar Warna lokal = {Color3.fromRGB(0, 255, 0), Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 170, 255), Color3.fromRGB(255, 255, 0), Color3.fromRGB(150, 0, 255), Color3.fromRGB(255, 255, 255), Color3.fromRGB(0, 255, 255), Color3.fromRGB(255, 105, 180), Color3.fromRGB(255, 140, 0)}
+Objek ESP lokal = {}
+
+-- ==========================================
+-- 1. ANIMASI SEDANG DIMUAT
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HanxHubV40"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local LoadFrame = Instance.new("Frame")
+LoadFrame.Size = UDim2.new(0, 320, 0, 130)
+LoadFrame.Position = UDim2.new(0.5, -160, 0.5, -65)
+LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+LoadFrame.BorderSizePixel = 0
+LoadFrame.Parent = ScreenGui
+Instance.new("UICorner", LoadFrame).CornerRadius = UDim.new(0, 10)
+
+local LoadGrad = Instance.new("UIGradient")
+LoadGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 0)), ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200)) })
+LoadGrad.Parent = LoadFrame
+
+lokal TitleGlow = Instance.new("TextLabel")
+TitleGlow.Size = UDim2.new(1, 0, 0, 40)
+TitleGlow.Position = UDim2.new(0, 0, 0, 25)
+TitleGlow.BackgroundTransparency = 1
+TitleGlow.Text = NamaKamu.. " | HALLOWEEN"
+TitleGlow.Font = Enum.Font.GothamBlack
+Ukuran Teks Bercahaya Judul = 22
+TitleGlow.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleGlow.Parent = LoadFrame
+
+GlowLine lokal = Instance.new("Frame")
+GlowLine.Size = UDim2.new(0, 0, 0, 3)
+GlowLine.Position = UDim2.new(0.5, 0, 0.5, 25)
+GlowLine.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+GlowLine.BorderSizePixel = 0
+GlowLine.Parent = LoadFrame
+
+local GlowUIStroke = Instance.new("UIStroke")
+GlowUIStroke.Color = Color3.fromRGB(255, 140, 0)
+GlowUIStroke.Ketebalan = 4
+GlowUIStroke.Transparency = 0.5
+GlowUIStroke.Parent = GlowLine
+
+TweenService:Create(GlowLine, TweenInfo.new(2.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, 3), Position = UDim2.new(0, 0, 0.5, 25)}):Play()
+tugas.tunggu(2.5)
+TweenService:Create(GlowLine, TweenInfo.new(0.5, Enum.EasingStyle.Quad,Enum.EasingDirection.In ), {BackgroundTransparency = 1}):Play()
+TweenService:Create(GlowUIStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+tugas.tunggu(0.5)
+LoadFrame:Destroy()
+
+-- ==========================================
+-- 2. TOMBOL TOGGLE
+-- ==========================================
+local ToggleBtn = Instance.new("TextButton")
+UkuranToggleBtn = UDim2.new(0, 55, 0, 55)
+ToggleBtn.Position = UDim2.new(0, 20, 0, 100)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+ToggleBtn.Text = ""
+ToggleBtn.Parent = ScreenGui
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 12)
+ToggleCorner.Parent = ToggleBtn
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Color = Color3.fromRGB(255, 140, 0)
+ToggleStroke.Ketebalan = 2.5
+ToggleStroke.Parent = ToggleBtn
+
+local ToggleGrad = Instance.new("UIGradient")
+ToggleGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 140, 0)), ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200)) })
+ToggleGrad.Rotation = 90
+ToggleGrad.Parent = ToggleBtn
+
+local InnerFix = Instance.new("TextLabel")
+InnerFix.Size = UDim2.new(1, 0, 1, 0)
+Perbaikan Dalam.Transparansi Latar Belakang = 1
+InnerFix.Text = "H"
+InnerFix.TextColor3 = Color3.fromRGB(255, 255, 255)
+InnerFix.Font = Enum.Font.GothamBlack
+Ukuran Teks Perbaikan Dalam = 28
+Rotasi InnerFix = -45
+InnerFix.Parent = ToggleBtn
+
+-- ==========================================
+-- 3. MENU UTAMA
+-- ==========================================
+MainFrame lokal = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 560, 0, 340)
+MainFrame.Position = UDim2.new(0.5, -280, 0.5, -170)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+TopLine lokal = Instance.new("Frame")
+TopLine.Size = UDim2.new(1, 0, 0, 4)
+TopLine.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+TopLine.BorderSizePixel = 0
+TopLine.Parent = MainFrame
+Instance.new("UICorner", TopLine).CornerRadius = UDim.new(0, 12)
+
+Sidebar lokal = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 150, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(22, 22, 30)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 12)
+
+local LogoFrame = Instance.new("Frame")
+Ukuran Bingkai Logo = UDim2.baru(1, -10, 0, 55)
+LogoFrame.Posisi = UDim2.baru(0, 5, 0, 5)
+LogoFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+LogoFrame.Parent = Sidebar
+Instance.new("UICorner", LogoFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", LogoFrame).Color = Color3.fromRGB(100, 100, 120)
+
+local LogoGrad = Instance.new("UIGradient")
+LogoGrad.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 140, 0)), ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 200))})
+LogoGrad.Parent = LogoFrame
+
+Judul lokal = Instance.new("TextLabel")
+Judul.Ukuran = UDim2.baru(1, 0, 1, 0)
+Judul.TransparansiLatarBelakang = 1
+Judul.Teks = NamaKamu
+Judul.Font = Enum.Font.GothamBlack
+Ukuran Teks Judul = 20
+Judul.TextColor3 = Color3.fromRGB(255, 255, 255)
+Judul.Induk = Bingkai Logo
+
+Teks Acara lokal = Instance.new("TextLabel")
+Ukuran EventText = UDim2.new(1, -10, 0, 30)
+EventText.Position = UDim2.new(0, 5, 0, 65)
+EventText.BackgroundTransparency = 1
+EventText.Text = "DISTRIK KEKERASAN\nNOKEY BARU"
+EventText.Font = Enum.Font.GothamBold
+Ukuran Teks Acara = 11
+EventText.TextColor3 = Color3.fromRGB(255, 140, 0)
+EventText.TextXAlignment = Enum.TextXAlignment.Left
+EventText.Parent = Sidebar
+
+Kredit lokal = Instance.new("TextLabel")
+Kredit.Ukuran = UDim2.baru(1, -10, 0, 30)
+Kredit.Posisi = UDim2.baru(0, 5, 1, -35)
+Kredit.TransparansiLatarBelakang = 1
+Credit.Text = "oleh HANXHUB 2026\nTes Pengembang Baru"
+Kredit.Font = Enum.Font.Gotham
+Kredit.UkuranTeks = 10
+Kredit.TextColor3 = Color3.fromRGB(100, 100, 110)
+Kredit.TextXAlignment = Enum.TextXAlignment.Left
+Kredit.Induk = Sidebar
+
+Area Konten lokal = Instance.new("Frame")
+ContentArea.Size = UDim2.new(1, -165, 1, -20)
+ContentArea.Position = UDim2.new(0, 155, 0, 10)
+ContentArea.BackgroundTransparency = 1
+ContentArea.Parent = MainFrame
+
+-- ==========================================
+-- 4. HALAMAN
+-- ==========================================
+Halaman lokal = {}
+Halaman.Beranda = Instance.baru("Bingkai")
+Pages.Home.Size = UDim2.new(1, 0, 1, 0)
+Pages.Home.BackgroundTransparency = 1
+Halaman.Beranda.Terlihat = benar
+Halaman.Beranda.Induk = AreaKonten
+
+fungsi lokal buatLink(teks, url, y)
+local btn = Instance.new("TextButton")
+Ukuran tombol = UDim2.baru(1, 0, 0, 38)
+btn.Posisi = UDim2.baru(0, 0, 0, y)
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btn.Text = " " .. teks
+btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+btn.Font = Enum.Font.GothamBold
+Ukuran Teks tombol = 12
+btn.TextXAlignment = Enum.TextXAlignment.Left
+btn.Parent = Pages.Home
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", btn).Color = Color3.fromRGB(60, 60, 80)
+btn.MouseButton1Click:Connect(function()
+jika setclipboard maka pcall(function() setclipboard(url) end) end
+jika RequestOpenBrowser maka pcall(function() RequestOpenBrowser(url) end)
+elseif request then pcall(function() request({Url = url, Method = "GET"}) end) end
+akhir)
+akhir
+buatLink("TikTok: @whoohnbro_", LinkTikTok, 10)
+buatLink("YouTube: @hannxhub", LinkYouTube, 58)
+buatLink("Saluran WhatsApp", LinkWA, 106)
+buatLink("Saweria (Donasi)", LinkSaweria, 154)
+
+Pages.Fitur = Instance.new("Frame")
+Pages.Fitur.Size = UDim2.new(1, 0, 1, 0)
+Halaman.Fitur.BackgroundTransparency = 1
+Pages.Fitur.Visible = false
+Pages.Fitur.Parent = ContentArea
+
+fungsi lokal buatTombol(teks, x, y, keyName)
+local btn = Instance.new("TextButton")
+Ukuran tombol = UDim2.baru(0, 190, 0, 34)
+btn.Posisi = UDim2.baru(0, x, 0, y)
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btn.Teks = " " .. teks .. ": OFF"
+btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+btn.Font = Enum.Font.GothamBold
+Ukuran Teks tombol = 12
+btn.TextXAlignment = Enum.TextXAlignment.Left
+btn.Parent = Pages.Fitur
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+goresan lokal = Instance.new("UIStroke", btn)
+goresan.Warna = Warna3.dariRGB(60, 60, 80)
+Ketebalan goresan = 1
+jika Warna[keyName] maka
+local colorBtn = Instance.new("TextButton")
+colorBtn.Size = UDim2.new(0, 20, 0, 20)
+colorBtn.Position = UDim2.new(1, -25, 0.5, -10)
+colorBtn.BackgroundColor3 = Colors[keyName]
+colorBtn.Text = ""
+colorBtn.Parent = btn
+Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(0, 5)
+Instance.new("UIStroke", colorBtn).Color = Color3.fromRGB(150, 150, 150)
+colorBtn.MouseButton1Click:Connect(function()
+Warna saat ini lokal = Warna[keyName]
+indeks berikutnya lokal = 1
+untuk i, c dalam ipairs(ColorList) lakukan
+jika c == currentColor maka
+Indeks berikutnya = i + 1
+jika nextIndex > #ColorList maka nextIndex = 1
+merusak
+akhir
+akhir
+Warna[keyName] = DaftarWarna[nextIndex]
+colorBtn.BackgroundColor3 = Colors[keyName]
+jika Status[keyName] maka terapkanESP()
+akhir)
+akhir
+btn.MouseButton1Click:Connect(function()
+Status[keyName] = bukan Status[keyName]
+jika Status[keyName] maka
+btn.Teks = " " .. teks .. ": ON"
+btn.BackgroundColor3 = Color3.fromRGB(90, 60, 150)
+kalau tidak
+btn.Teks = " " .. teks .. ": OFF"
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+akhir
+terapkanESP()
+akhir)
+kembali tombol
+akhir
+
+-- FITUR ESP (KIRI)
+lokal b1 = buatTombol("Survivor ESP", 0, 0, "Survivor")
+lokal b2 = buatTombol("Killer ESP", 0, 40, "Killer")
+lokal b4 = buatTombol("Palet ESP", 0, 80, "Palet")
+lokal b5 = buatTombol("Windows ESP", 0, 120, "Windows")
+local b6 = buatTombol("Generator ESP", 0, 160, "Gens")
+lokal b16 = buatTombol("Perangkap ESP", 0, 200, "Perangkap")
+lokal b18 = buatTombol("Labu ESP", 0, 240, "Labu")
+
+-- FITUR HACK (KANAN)
+lokal b7 = buatTombol("Noclip", 210, 0, "Noclip")
+lokal b10 = buatTombol("KecepatanBerjalan", 210, 40, "Kecepatan")
+
+Label kecepatan lokal = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 190, 0, 20)
+speedLabel.Position = UDim2.new(0, 210, 0, 80)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Kecepatan: 50"
+speedLabel.Font = Enum.Font.GothamBold
+speedLabel.TextSize = 12
+speedLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = Halaman.Fitur
+
+kecepatan bar lokal = Instance.new("Frame")
+barSpeed.Size = UDim2.new(0, 190, 0, 6)
+barSpeed.Position = UDim2.new(0, 210, 0, 105)
+barSpeed.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+barSpeed.Parent = Pages.Fitur
+Instance.new("UICorner", barSpeed).CornerRadius = UDim.new(1, 0)
+
+kecepatan pengisian lokal = Instance.new("Frame")
+fillSpeed.Size = UDim2.new(0.25, 0, 1, 0)
+fillSpeed.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+fillSpeed.Parent = barSpeed
+Instance.new("UICorner", fillSpeed).CornerRadius = UDim.new(1, 0)
+
+kenop kecepatan lokal = Instance.new("TextButton")
+knobSpeed.Size = UDim2.new(0, 16, 0, 16)
+knobSpeed.Position = UDim2.new(0.25, -8, 0.5, -8)
+knobSpeed.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+knobSpeed.Text = ""
+Kecepatan kenop.Induk = Kecepatan batang
+Instance.new("UICorner", knobSpeed).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", knobSpeed).Color = Color3.fromRGB(200, 200, 200)
+
+lokal b17 = buatTombol("FOV (Lebar)", 210, 140, "FOV")
+lokal fovLabel = Instance.new("TextLabel")
+fovLabel.Size = UDim2.new(0, 190, 0, 20)
+fovLabel.Posisi = UDim2.baru(0, 210, 0, 180)
+fovLabel.BackgroundTransparency = 1
+fovLabel.Text = "FOV: 70"
+fovLabel.Font = Enum.Font.GothamBold
+fovLabel.TextSize = 12
+fovLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovLabel.Parent = Pages.Fitur
+
+barFOV lokal = Instance.new("Frame")
+barFOV.Size = UDim2.new(0, 190, 0, 6)
+barFOV.Posisi = UDim2.baru(0, 210, 0, 205)
+barFOV.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+barFOV.Parent = Pages.Fitur
+Instance.new("UICorner", barFOV).CornerRadius = UDim.new(1, 0)
+
+local fillFOV = Instance.new("Frame")
+fillFOV.Size = UDim2.new(0, 0, 1, 0)
+fillFOV.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+fillFOV.Parent = barFOV
+Instance.new("UICorner", fillFOV).CornerRadius = UDim.new(1, 0)
+
+kenopFOV lokal = Instance.new("TextButton")
+knobFOV.Size = UDim2.new(0, 16, 0, 16)
+knobFOV.Position = UDim2.new(0, -8, 0.5, -8)
+knobFOV.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+knobFOV.Text = ""
+knobFOV.Parent = barFOV
+Instance.new("UICorner", knobFOV).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", knobFOV).Color = Color3.fromRGB(200, 200, 200)
+
+Kecepatan seret lokal = false
+fungsi lokal getSpeed() mengembalikan math.floor(16 + ((150 - 16) * fillSpeed.Size.X.Scale)) akhir
+knobSpeed.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragSpeed ​​= true end end)
+UserInputService.InputChanged:Connect(function(input))
+jika dragSpeed ​​dan (input.UserInputType == Enum.UserInputType.MouseMovement atau input.UserInputType == Enum.UserInputType.Touch) maka
+mouseX lokal = math.clamp(input.Position.X, barSpeed.AbsolutePosition.X, barSpeed.AbsolutePosition.X + barSpeed.AbsoluteSize.X)
+persentase lokal = (mouseX - barSpeed.AbsolutePosition.X) / barSpeed.AbsoluteSize.X
+fillSpeed.Size = UDim2.new(percent, 0, 1, 0)
+knobSpeed.Position = UDim2.new(percent, -8, 0.5, -8)
+speedLabel.Text = "Kecepatan: " .. getSpeed()
+akhir
+akhir)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragSpeed ​​= false end end)
+
+dragFOV lokal = false
+fungsi lokal getFOV() mengembalikan math.floor(70 + ((120 - 70) * fillFOV.Size.X.Scale)) akhir
+knobFOV.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragFOV = true end end)
+UserInputService.InputChanged:Connect(function(input))
+jika dragFOV dan (input.UserInputType == Enum.UserInputType.MouseMovement atau input.UserInputType == Enum.UserInputType.Touch) maka
+mouseX lokal = math.clamp(input.Position.X, barFOV.AbsolutePosition.X, barFOV.AbsolutePosition.X + barFOV.AbsoluteSize.X)
+persentase lokal = (mouseX - barFOV.AbsolutePosition.X) / barFOV.AbsoluteSize.X
+fillFOV.Size = UDim2.new(percent, 0, 1, 0)
+knobFOV.Position = UDim2.new(percent, -8, 0.5, -8)
+fovLabel.Text = "FOV: " .. getFOV()
+akhir
+akhir)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragFOV = false end end)
+
+Halaman.Segera = Instance.baru("Bingkai")
+Pages.Soon.Size = UDim2.new(1, 0, 1, 0)
+Pages.Soon.BackgroundTransparency = 1
+Pages.Soon.Visible = false
+Pages.Soon.Parent = ContentArea
+
+local SoonFrame = Instance.new("Frame")
+SoonFrame.Size = UDim2.new(1, 0, 0, 120)
+SoonFrame.Position = UDim2.new(0, 0, 0, 20)
+SoonFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+SoonFrame.Parent = Pages.Soon
+Instance.new("UICorner", SoonFrame).CornerRadius = UDim.new(0, 8)
+Instance.new("UIStroke", SoonFrame).Color = Color3.fromRGB(60, 60, 80)
+
+lokal SoonText = Instance.new("TextLabel")
+SoonText.Size = UDim2.new(1, 0, 1, 0)
+SoonText.BackgroundTransparency = 1
+SoonText.Text = "Segera Hadir!\n\n- Tangkis Otomatis\n- Generasi Otomatis\n- Penyempurnaan Otomatis\n- Penyembuhan Otomatis"
+SoonText.Font = Enum.Font.GothamBold
+SoonText.TextSize = 14
+SoonText.TextColor3 = Color3.fromRGB(150, 150, 160)
+SoonText.Parent = SoonFrame
+
+-- ==========================================
+-- 5. NAVIGASI
+-- ==========================================
+fungsi lokal buatTombolSidebar(teks, y)
+local btn = Instance.new("TextButton")
+Ukuran tombol = UDim2.baru(1, -10, 0, 35)
+btn.Posisi = UDim2.baru(0, 5, 0, y)
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btn.Text = " " .. teks
+btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+btn.Font = Enum.Font.GothamBold
+Ukuran Teks tombol = 12
+btn.TextXAlignment = Enum.TextXAlignment.Left
+btn.Parent = Sidebar
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+kembali tombol
+akhir
+
+local btnHome = buatTombolSidebar("🏠 Home", 105)
+local btnFitur = buatTombolSidebar("⚔️ Fitur", 150)
+local btnSoon = buatTombolSidebar("⏳ Segera Diperbarui", 195)
+
+fungsi lokal pindahTab(tabAktif, btnAktif)
+untuk _, p dalam pasangan (Halaman) lakukan p.Terlihat = false
+Halaman[tabAktif].Terlihat = benar
+btnHome.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btnHome.TextColor3 = Color3.fromRGB(150, 150, 150)
+btnFitur.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btnFitur.TextColor3 = Color3.fromRGB(150, 150, 150)
+btnSoon.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+btnSoon.TextColor3 = Color3.fromRGB(150, 150, 150)
+btnAktif.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+btnAktif.TextColor3 = Color3.fromRGB(255, 255, 255)
+akhir
+
+btnHome.MouseButton1Click:Connect(function() pindahTab("Home", btnHome) end)
+btnFitur.MouseButton1Click:Connect(function() pindahTab("Fitur", btnFitur) end)
+btnSoon.MouseButton1Click:Connect(function() pindahTab("Soon", btnSoon) end)
+ToggleBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+-- ==========================================
+-- 6. LOGIKA ESP & PENGATURAN
+-- ==========================================
+fungsi lokal setNoclip(state)
+Jika LocalPlayer.Character tidak ada, maka kembalikan nilai akhir.
+untuk _, bagian dalam ipairs(LocalPlayer.Character:GetDescendants()) lakukan
+jika part:IsA("BasePart") maka part.CanCollide = tidak menyatakan akhir
+akhir
+akhir
+
+fungsi lokal findObj(kata kunci)
+lokal ditemukan = {}
+peta lokal = ruang kerja:TemukanAnakPertama("Peta") atau ruang kerja
+untuk _, obj dalam ipairs(map:GetDescendants()) lakukan
+jika (obj:IsA("Model") atau obj:IsA("BasePart")) dan obj.Name:lower():find(keyword) maka
+jika obj:IsA("BasePart") dan (obj.Size.X < 2 atau obj.Size.Y < 2 atau obj.Size.Z < 2) maka
+kalau tidak
+tabel.sisipkan(ditemukan, obj)
+akhir
+akhir
+akhir
+pengembalian ditemukan
+akhir
+
+fungsi applyESP()
+untuk _, obj dalam pasangan (ESP_Objects) lakukan jika obj maka obj:Destroy() akhir akhir
+Objek_ESP = {}
+untuk _, plr dalam ipairs(Players:GetPlayers()) lakukan
+jika plr ~= LocalPlayer dan plr.Character maka
+lokal isKiller = false
+tim lokal = plr.Team dan plr.Team.Name:lower() atau ""
+Jika tim menemukan "pembunuh", maka isKiller = true
+jika (isKiller dan Status.Killer) atau (not isKiller dan Status.Survivor) maka
+lokal hl = Instance.new("Sorotan")
+hl.Adornee = plr.Character
+hl.FillColor = isKiller dan Colors.Killer atau Colors.Survivor
+hl.Parent = plr.Character
+table.insert(ESP_Objects, hl)
+akhir
+akhir
+akhir
+Jika Status.Pallets maka untuk _, obj dalam ipairs(findObj("pallet")) lakukan local hl = Instance.new("Highlight"); hl.Adornee = obj; hl.FillColor = Colors.Pallets; hl.Parent = obj table.insert(ESP_Objects, hl) end end
+Jika Status.Windows maka untuk _, obj dalam ipairs(findObj("window")) lakukan local hl = Instance.new("Highlight"); hl.Adornee = obj; hl.FillColor = Colors.Windows; hl.Parent = obj table.insert(ESP_Objects, hl) end end
+Jika Status.Gens maka untuk _, obj dalam ipairs(findObj("generator")) lakukan local hl = Instance.new("Highlight"); hl.Adornee = obj; hl.FillColor = Colors.Gens; hl.Parent = obj table.insert(ESP_Objects, hl) end end
+jika Status.Traps maka
+perangkap lokal = findObj("perangkap")
+untuk _, obj dalam ipairs(findObj("bear")) lakukan tableinsert(traps, obj) end
+untuk _, obj dalam ipairs(findObj("snare")) lakukan tableinsert(traps, obj) end
+for _, obj in ipairs(traps) do local hl = Instance.new("Highlight"); hl.Adornee = obj; hl.FillColor = Colors.Traps; hl.Parent = obj table.insert(ESP_Objects, hl) end
+akhir
+jika Status.Labu maka
+labu lokal = findObj("labu")
+untuk _, obj dalam ipairs(findObj("labu")) lakukan tableinsert(labu, obj) end
+for _, obj in ipairs(pumpkins) do local hl = Instance.new("Highlight"); hl.Adornee = obj; hl.FillColor = Colors.Pumpkins; hl.Parent = obj table.insert(ESP_Objects, hl) end
+akhir
+akhir
+
+-- ==========================================
+-- 7. PERULANGAN
+-- ==========================================
+RunService.Heartbeat:Connect(function()
+Jika LocalPlayer.Character tidak ada, maka kembalikan nilai akhir.
+hum lokal = LocalPlayer.Character:FindFirstChild("Humanoid")
+jika tidak bersenandung maka kembali ke akhir
+-- [PERBAIKI BUG JATOH & JONGKOK]
+-- Cek apakah karakter lagi jatoh (ragdoll) atau lagi jongkok (crouch)
+lokal isRagdoll = hum:GetState() == Enum.HumanoidStateType.Physics atau hum:GetState() == Enum.HumanoidStateType.FallingDown
+lokal isCrouching = hum:GetState() == Enum.HumanoidStateType.Running dan hum.WalkSpeed ​​< 16
+-- (Catatan: Crouch biasanya nge-set WalkSpeed ​​ke < 16, misal 8)
+jika Status.Speed ​​dan bukan isRagdoll dan bukan isCrouching maka
+hum.KecepatanBerjalan = getSpeed()
+jika bukan isRagdoll dan bukan isCrouching maka
+hum.KecepatanBerjalan = 16
+akhir
+setNoclip(Status.Noclip)
+Kamera lokal = ruang kerja.KameraSaatIni
+jika kamera maka
+Jika Status.FOV maka cam.FieldOfView = getFOV() else cam.FieldOfView = 70 end
+akhir
+akhir)
+
+Pemain Lokal.KarakterDitambahkan:Hubungkan(fungsi())
+tugas.tunggu(1)
+terapkanESP()
+akhir)
+
+print("HANX HUB V40 berhasil dimuat (Bug WalkSpeed ​​telah diperbaiki).")
